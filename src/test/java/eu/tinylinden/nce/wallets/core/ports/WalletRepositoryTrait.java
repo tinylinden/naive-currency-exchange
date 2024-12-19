@@ -17,7 +17,7 @@ public interface WalletRepositoryTrait extends Trait {
     return mock;
   }
 
-  default void walletExists(Wallet wallet) {
+  default Wallet walletExists(Wallet wallet) {
     var mock = wallets();
 
     var byId = new WalletFinder.Specification.ByOwnerAndId(wallet.getOwner(), wallet.getId());
@@ -26,6 +26,8 @@ public interface WalletRepositoryTrait extends Trait {
 
     when(mock.find(byId)).thenReturn(Optional.of(wallet));
     when(mock.find(byCurrency)).thenReturn(Optional.of(wallet));
+
+    return wallet;
   }
 
   default void walletWasSaved(Wallet wallet) {

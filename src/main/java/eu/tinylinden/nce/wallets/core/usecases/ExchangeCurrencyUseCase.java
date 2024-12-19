@@ -1,8 +1,5 @@
 package eu.tinylinden.nce.wallets.core.usecases;
 
-import static eu.tinylinden.nce.wallets.core.model.CurrencyExchange.Operation.BUY;
-import static eu.tinylinden.nce.wallets.core.model.CurrencyExchange.Operation.SELL;
-
 import eu.tinylinden.nce.commons.exceptions.DomainException;
 import eu.tinylinden.nce.commons.model.CurrencyCode;
 import eu.tinylinden.nce.commons.model.CustomerNo;
@@ -11,8 +8,6 @@ import eu.tinylinden.nce.commons.usecases.UseCase;
 import eu.tinylinden.nce.wallets.core.model.*;
 import eu.tinylinden.nce.wallets.core.ports.*;
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
@@ -40,17 +35,17 @@ public class ExchangeCurrencyUseCase
 
     var sourceWallet = findWallet(input.owner, input.getSource());
     var targetWallet = findWallet(input.owner, input.getTarget());
-    var rate = findExchangeRate(input);
+    var calculator = exchangeCalculator(input);
 
     var now = Instant.now();
-    var debitTransaction = debitTransaction(sourceWallet, rate, input, now);
-    var creditTransaction = creditTransaction(targetWallet, rate, input, now);
+    var debitTransaction = debitTransaction(sourceWallet, calculator, input, now);
+    var creditTransaction = creditTransaction(targetWallet, calculator, input, now);
 
     return new CurrencyExchange()
         .setOperation(input.getOperation())
         .setSource(debitTransaction.getAmount().negate())
         .setTarget(creditTransaction.getAmount())
-        .setRate(rate);
+        .setRate(calculator.getRate());
   }
 
   private void checkIfTransactionsExist(final NewCurrencyExchange input) {
@@ -75,9 +70,9 @@ public class ExchangeCurrencyUseCase
                     Locale.getDefault()));
   }
 
-  private ExchangeRate findExchangeRate(final NewCurrencyExchange input) {
+  private ExchangeCalculator exchangeCalculator(final NewCurrencyExchange input) {
     log.trace(
-        "Finding exchange rate for {} {}/{}",
+        "Finding exchange calculator for {} {}/{}",
         input.getOperation(),
         input.getSource(),
         input.getTarget());
@@ -86,12 +81,12 @@ public class ExchangeCurrencyUseCase
 
   private Transaction debitTransaction(
       final Wallet wallet,
-      final ExchangeRate rate,
+      final ExchangeCalculator calculator,
       final NewCurrencyExchange input,
       final Instant now) {
-    BigDecimal effectiveAmount = // fixme: condition to inverse exchange rate is invalid
+    BigDecimal effectiveAmount =
         switch (input.getOperation()) {
-          case BUY -> multiply(input.getAmount(), rate, wallet.getCurrency() == input.getSource());
+          case BUY -> calculator.apply(input.getAmount());
           case SELL -> input.getAmount();
         };
 
@@ -103,34 +98,24 @@ public class ExchangeCurrencyUseCase
     log.trace("Debiting {}", wallet.getId().getString());
     wallets.save(wallet.decBalance(effectiveAmount));
     return transactions.save(
-        transaction(input.getRef(), wallet, now, effectiveAmount.negate(), rate));
+        transaction(input.getRef(), wallet, now, effectiveAmount.negate(), calculator.getRate()));
   }
 
   private Transaction creditTransaction(
       final Wallet wallet,
-      final ExchangeRate rate,
+      final ExchangeCalculator calculator,
       final NewCurrencyExchange input,
       final Instant now) {
-    BigDecimal effectiveAmount = // fixme: condition to inverse exchange rate is invalid
+    BigDecimal effectiveAmount =
         switch (input.getOperation()) {
           case BUY -> input.getAmount();
-          case SELL -> multiply(input.getAmount(), rate, wallet.getCurrency() == input.getSource());
+          case SELL -> calculator.apply(input.getAmount());
         };
 
     log.trace("Crediting {}", wallet.getId().getString());
     wallets.save(wallet.incBalance(effectiveAmount));
-    return transactions.save(transaction(input.getRef(), wallet, now, effectiveAmount, rate));
-  }
-
-  private BigDecimal multiply(
-      final BigDecimal amount, final ExchangeRate rate, final Boolean inverse) {
-    if (inverse) {
-      return BigDecimal.ONE
-          .divide(rate.getValue(), new MathContext(4))
-          .multiply(amount)
-          .setScale(2, RoundingMode.HALF_UP);
-    }
-    return rate.getValue().multiply(amount).setScale(2, RoundingMode.HALF_UP);
+    return transactions.save(
+        transaction(input.getRef(), wallet, now, effectiveAmount, calculator.getRate()));
   }
 
   private Transaction transaction(

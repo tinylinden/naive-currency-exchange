@@ -20,11 +20,11 @@ class ExchangeCurrencyUseCaseTest extends TraitsAware
 
   private final TransactionRepository transactions = transactions();
 
-  private final ExchangeRateFinder exchangeRates =
-      (op, source, target) -> new ExchangeRate(BigDecimal.ONE, "TEST");
-
-  private final ExchangeCurrencyUseCase tested =
-      new ExchangeCurrencyUseCase(wallets, transactions, exchangeRates);
+//  private final ExchangeRateFinder exchangeRates =
+//      (op, source, target) -> new ExchangeRate(BigDecimal.ONE, "TEST");
+//
+//  private final ExchangeCurrencyUseCase tested =
+//      new ExchangeCurrencyUseCase(wallets, transactions, exchangeRates);
 
   @BeforeEach
   void setUp() {

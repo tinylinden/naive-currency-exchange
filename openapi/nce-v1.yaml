@@ -100,7 +100,7 @@ paths:
         - Wallets
       summary: List transactions
       description: |
-        Get wallet history - all settled transactions. 
+        List wallet history - all settled transactions. 
 
         ⚠️ Pending features - filtering, sorting and paging.
       responses:
@@ -177,7 +177,7 @@ paths:
                     operation: BUY
                     source:
                       currency: USD
-                      value: 176.65
+                      value: 10.46
                     target:
                       currency: PLN
                       value: 42.99
@@ -315,9 +315,7 @@ components:
       type: string
       example: 38352658567418872
     Wallet:
-      description: |
-        Wallet details. The balance update may be slightly delayed 
-        relative to the transaction settlement.
+      description: Wallet details.
       properties:
         walletId:
           $ref: '#/components/schemas/WalletId'

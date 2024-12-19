@@ -1,16 +1,21 @@
 package eu.tinylinden.nce.wallets.adapters.nbp;
 
 import static eu.tinylinden.nce.commons.model.CurrencyCode.PLN;
-import static eu.tinylinden.nce.wallets.core.model.CurrencyExchange.Operation.BUY;
 import static eu.tinylinden.nce.wallets.core.model.CurrencyExchange.Operation.SELL;
 
 import eu.tinylinden.nce.commons.exceptions.DomainException;
 import eu.tinylinden.nce.commons.model.CurrencyCode;
 import eu.tinylinden.nce.wallets.core.model.CurrencyExchange;
+import eu.tinylinden.nce.wallets.core.model.ExchangeCalculator;
 import eu.tinylinden.nce.wallets.core.model.ExchangeRate;
 import eu.tinylinden.nce.wallets.core.ports.ExchangeRateFinder;
+
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Locale;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,49 +27,28 @@ class NbpExchangeRateFinder implements ExchangeRateFinder {
 
   private final NbpExchangeRateClient nbp;
 
-  // fixme: refactor me, please (i was really tired implementing this ugly if-leton)
-  // todo: implement tests
   @Override
-  public ExchangeRate find(
+  public ExchangeCalculator find(
       CurrencyExchange.Operation operation, CurrencyCode source, CurrencyCode target) {
-    if (operation == BUY && target == PLN) {
-      return buyLocal(source);
-    }
-
-    if (operation == BUY) {
-      return buyForeign(target);
-    }
-
-    if (operation == SELL && source == PLN) {
-      return sellLocal(target);
-    }
-
+    var rate = find(currency(source, target));
     if (operation == SELL) {
-      return sellForeign(source);
+      return calculator(rate.getNo(), rate::getBid, source == PLN);
     }
-
-    throw new DomainException(
-        "UnsupportedCurrencyPair", Collections.emptyMap(), Locale.getDefault());
+    return calculator(rate.getNo(), rate::getAsk, target == PLN);
   }
 
-  private ExchangeRate buyLocal(CurrencyCode currency) {
-    var rate = find(currency);
-    return new ExchangeRate(rate.getBid(), rate.getNo());
+  private ExchangeCalculator calculator(String source, Supplier<BigDecimal> value, Boolean invert) {
+    return new ExchangeCalculator(new ExchangeRate(value.get(), source), invert);
   }
 
-  private ExchangeRate buyForeign(CurrencyCode currency) {
-    var rate = find(currency);
-    return new ExchangeRate(rate.getBid(), rate.getNo());
-  }
-
-  private ExchangeRate sellLocal(CurrencyCode currency) {
-    var rate = find(currency);
-    return new ExchangeRate(rate.getAsk(), rate.getNo());
-  }
-
-  private ExchangeRate sellForeign(CurrencyCode currency) {
-    var rate = find(currency);
-    return new ExchangeRate(rate.getAsk(), rate.getNo());
+  private CurrencyCode currency(CurrencyCode source, CurrencyCode target) {
+    return Stream.of(source, target)
+        .filter(it -> it != PLN)
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new DomainException(
+                    "UnsupportedCurrencyPair", Collections.emptyMap(), Locale.getDefault()));
   }
 
   private NbpExchangeRateDto find(CurrencyCode currency) {
