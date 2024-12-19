@@ -2,6 +2,7 @@ package eu.tinylinden.nce.wallets.core.usecases;
 
 import static eu.tinylinden.nce.wallets.core.model.WalletAssertions.assertThat;
 import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import eu.tinylinden.nce.TraitsAware;
 import eu.tinylinden.nce.commons.exceptions.DomainException;
@@ -70,7 +71,7 @@ class OpenWalletUseCaseTest extends TraitsAware
     var actual = catchThrowableOfType(DomainException.class, () -> tested.execute(newWallet));
 
     // then
-    Assertions.assertThat(actual.getCode()).isEqualTo("WalletForCurrencyExists");
+    assertThat(actual.getCode()).isEqualTo("WalletForCurrencyExists");
 
     // and
     noWalletsWereSaved();

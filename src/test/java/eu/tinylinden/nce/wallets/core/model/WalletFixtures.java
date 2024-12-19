@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 
 public class WalletFixtures extends FixturesBase {
   public static Wallet pln() {
-    return pln(BigDecimal.valueOf(100));
+    return pln(BigDecimal.valueOf(1_000));
   }
 
   public static Wallet pln(BigDecimal balance) {

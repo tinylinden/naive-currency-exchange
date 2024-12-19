@@ -13,7 +13,7 @@ class ExchangeCalculatorTest {
     var tested = tested(true);
 
     // when
-    var actual = tested.calculate(BigDecimal.ONE);
+    var actual = tested.apply(BigDecimal.ONE);
 
     // then -- 1 / rate * input
     assertThat(actual).usingComparator(BigDecimal::compareTo).isEqualTo(BigDecimal.valueOf(0.25));
@@ -25,7 +25,7 @@ class ExchangeCalculatorTest {
     var tested = tested(false);
 
     // when
-    var actual = tested.calculate(BigDecimal.ONE);
+    var actual = tested.apply(BigDecimal.ONE);
 
     // then -- // then -- rate * input
     assertThat(actual).usingComparator(BigDecimal::compareTo).isEqualTo(BigDecimal.valueOf(4.02));

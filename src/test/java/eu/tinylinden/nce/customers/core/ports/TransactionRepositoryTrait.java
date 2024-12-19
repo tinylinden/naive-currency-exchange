@@ -4,7 +4,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import eu.tinylinden.nce.Trait;
+import eu.tinylinden.nce.wallets.core.model.Transaction;
+import eu.tinylinden.nce.wallets.core.ports.TransactionFinder;
 import eu.tinylinden.nce.wallets.core.ports.TransactionRepository;
+
+import java.util.List;
 
 public interface TransactionRepositoryTrait extends Trait {
   default TransactionRepository transactions() {
@@ -14,6 +18,16 @@ public interface TransactionRepositoryTrait extends Trait {
     when(mock.save(any())).thenAnswer(it -> it.getArguments()[0]);
 
     return mock;
+  }
+
+  default Transaction transactionExist(Transaction transaction) {
+    var mock = transactions();
+
+    var byRef = new TransactionFinder.Specification.ByRef(transaction.getRef());
+
+    when(mock.list(byRef)).thenReturn(List.of(transaction));
+
+    return transaction;
   }
 
   default void transactionsWereSaved(Integer count) {
