@@ -25,6 +25,7 @@ paths:
         for authentication.
       requestBody:
         description: New customer details.
+        required: true
         content:
           application/json:
             schema:
@@ -36,6 +37,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Customer'
+        400:
+          $ref: '#/components/responses/BadRequest'
   /api/v1/wallets:
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
@@ -53,6 +56,7 @@ paths:
           - Initial balance can not be negative.
       requestBody:
         description: New wallet details.
+        required: true
         content:
           application/json:
             schema:
@@ -64,6 +68,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Wallet'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        403:
+          $ref: '#/components/responses/Unauthorized'
         409:
           description: |
             May happen if:
@@ -80,6 +88,8 @@ paths:
       summary: List wallets
       description: List all wallets owned by authenticated customer.
       responses:
+        403:
+          $ref: '#/components/responses/Unauthorized'
         200:
           description: Wallets owned by customer.
           content:
@@ -112,15 +122,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Transaction'
-        404:
-          description: |
-            May happen if:
-              - Wallet does not exist,
-              - Wallet does not belong to authenticated customer.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        403:
+          $ref: '#/components/responses/Unauthorized'
   /api/v1/exchanges:
     parameters:
       - $ref: '#/components/parameters/AcceptLanguage'
@@ -184,6 +189,10 @@ paths:
                     rate:
                       source: '243/C/NBP/2024'
                       value: 4.1092
+        400:
+          $ref: '#/components/responses/BadRequest'
+        403:
+          $ref: '#/components/responses/Unauthorized'
         422:
           description: |
             May happen if:
@@ -231,33 +240,60 @@ components:
       required: true
       schema:
         type: string
-        example: 38352658567418872
+        pattern: ^\d{18}$
+        example: 657613027056587440
+  responses:
+    NotFound:
+      description: |
+        May happen if:
+          - Resource does not exist,
+          - Resource does not belong to authenticated customer.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
   schemas:
     Error:
       description: Error details.
       properties:
-        code: 
+        code:
           description: Error code.
           type: string
-          example: WalletNotFound
+          example: BadRequest
         message:
           description: Technical error description.
+          example: '[ERROR - details...]'
         userMessage:
           description: Localized, human-friendly error description.
           type: string
-          example: Specified wallet does not exist or does not belong to you.
+          example: null
     RegisterCustomerRequest:
       description: Register customer request
       properties:
         firstName:
           type: string
           example: Jan
+          minLength: 3
         lastName:
           type: string
           example: Kowalski
+          minLength: 3
         password:
           type: string
           example: secret
+          minLength: 6
+      required:
+        - firstName
+        - lastName
+        - password
     OpenWalletRequest:
       description: New wallet details
       properties:
@@ -279,6 +315,11 @@ components:
           $ref: '#/components/schemas/CurrencyCode'
         amount:
           $ref: '#/components/schemas/Amount'
+      required:
+        - operation
+        - source
+        - target
+        - amount
       example:
         operation: SELL
         source:
@@ -287,7 +328,7 @@ components:
         target:
           currency: PLN
     CurrencyExchange:
-      description: ...
+      description: Details of exchanged currency
       properties:
         operation:
           $ref: '#/components/schemas/CurrencyExchangeOperation'
@@ -299,7 +340,8 @@ components:
           $ref: '#/components/schemas/ExchangeRate'
     CustomerNo:
       type: string
-      example: 38352658567410117
+      pattern: ^\d{18}$
+      example: 657612024410927102
     Customer:
       properties:
         customerNo:
@@ -313,7 +355,8 @@ components:
     WalletId:
       description: Unique wallet identifier
       type: string
-      example: 38352658567418872
+      pattern: ^\d{18}$
+      example: 657612024410927967
     Wallet:
       description: Wallet details.
       properties:
@@ -327,8 +370,7 @@ components:
       description: Transaction details
       properties:
         id:
-          type: string
-          example: 38352658567418872
+          $ref: '#/components/schemas/TransactionId'
         ref:
           type: string
           example: 48ca870b-b2cf-452d-8222-9cc23cb41d5e
@@ -350,7 +392,9 @@ components:
     CurrencyCode:
       description: ISO 4217 currency code
       type: string
-      pattern: $\\d{3}$
+      enum:
+        - PLN
+        - USD
       example: "PLN"
     Amount:
       description: Amount
@@ -370,7 +414,8 @@ components:
     TransactionId:
       description: Unique transaction identifier
       type: string
-      example: 38352658573940760
+      pattern: ^\d{18}$
+      example: 657612024410927936
     ExchangeRate:
       description: ...
       properties:

@@ -33,6 +33,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-web")
+	implementation("com.atlassian.oai:swagger-request-validator-spring-webmvc:2.44.1")
 	implementation("org.liquibase:liquibase-core")
 	implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
 	implementation("com.github.f4b6a3:tsid-creator:5.2.6")

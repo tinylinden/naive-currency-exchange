@@ -23,7 +23,7 @@ services:
     ports:
       - "8082:8080"
     volumes:
-      - ./openapi:/usr/share/nginx/html/api
+      - ./src/main/resources/openapi:/usr/share/nginx/html/api
     environment:
       URLS: |
         [
