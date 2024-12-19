@@ -1,0 +1,27 @@
+[
+  {
+    "id": "nbp-getRates-200",
+    "httpRequest": {
+      "method": "GET",
+      "path": "/nbp-mock/api/exchangerates/rates/c/.*"
+    },
+    "httpResponse": {
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "code": "USD",
+        "currency": "dolar amerykański",
+        "rates": [
+          {
+            "ask": 4.0993,
+            "bid": 4.0181,
+            "effectiveDate": "2024-12-18",
+            "no": "245/C/NBP/2024"
+          }
+        ],
+        "table": "C"
+      }
+    }
+  }
+]

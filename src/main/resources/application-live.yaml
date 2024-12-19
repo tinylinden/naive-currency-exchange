@@ -1,0 +1,4 @@
+nce:
+  adapters:
+    nbp:
+      url: https://api.nbp.pl

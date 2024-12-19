@@ -1,0 +1,384 @@
+openapi: 3.0.0
+info:
+  title: Naive Currency Exchange
+  version: v1
+servers:
+  - url: "http://localhost:8080"
+    description: "Local development server"
+tags:
+  - name: Customers
+    description: Everything about customers
+  - name: Wallets
+    description: Everything about wallets
+  - name: Exchanges
+    description: Everything about currency exchanges
+paths:
+  /api/v1/customers:
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    post:
+      tags:
+        - Customers
+      summary: Register customer
+      description: |
+        Register new customer. Returned `customerNo` should be used as username
+        for authentication.
+      requestBody:
+        description: New customer details.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterCustomerRequest'
+      responses:
+        200:
+          description: Registered customer details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+  /api/v1/wallets:
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+    post:
+      security:
+        - BasicAuth: [ ]
+      tags:
+        - Wallets
+      summary: Open wallet
+      description: |
+        Create new wallet for authenticated customer.
+        
+        Restrictions:
+          - Only one wallet is allowed for given currency,
+          - Initial balance can not be negative.
+      requestBody:
+        description: New wallet details.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenWalletRequest'
+      responses:
+        200:
+          description: Opened wallet details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        409:
+          description: |
+            May happen if:
+              - Wallet for given currency already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      security:
+        - BasicAuth: [ ]
+      tags:
+        - Wallets
+      summary: List wallets
+      description: List all wallets owned by authenticated customer.
+      responses:
+        200:
+          description: Wallets owned by customer.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Wallet'
+
+  /api/v1/wallets/{walletId}/transactions:
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+      - $ref: '#/components/parameters/WalletId'
+    get:
+      security:
+        - BasicAuth: [ ]
+      tags:
+        - Wallets
+      summary: List transactions
+      description: |
+        Get wallet history - all settled transactions. 
+
+        ⚠️ Pending features - filtering, sorting and paging.
+      responses:
+        200:
+          description: Transactions settled in wallet.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+        404:
+          description: |
+            May happen if:
+              - Wallet does not exist,
+              - Wallet does not belong to authenticated customer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/exchanges:
+    parameters:
+      - $ref: '#/components/parameters/AcceptLanguage'
+      - $ref: '#/components/parameters/RequestId'
+    post:
+      security:
+        - BasicAuth: [ ]
+      tags:
+        - Exchanges
+      summary: Exchange currency
+      description: |
+        Exchange currency for authenticated customer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CurrencyExchangeRequest'
+            examples:
+              Sell 0.05 USD for PLN:
+                value:
+                  operation: SELL
+                  source: USD
+                  target: PLN
+                  amount: 0.05
+              Buy 42.99 PLN for USD:
+                value:
+                  operation: BUY
+                  source: USD
+                  target: PLN
+                  amount: 42.99
+      responses:
+        200:
+          description: Settled exchange currency details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrencyExchange'
+              examples:
+                Sell 0.05 USD for PLN:
+                  value:
+                    operation: SELL
+                    source:
+                      currency: USD
+                      value: 0.05
+                    target:
+                      currency: PLN
+                      value: 0.20
+                    rate:
+                      source: '243/C/NBP/2024'
+                      value: 4.0278
+                Buy 42.99 PLN for USD:
+                  value:
+                    operation: BUY
+                    source:
+                      currency: USD
+                      value: 176.65
+                    target:
+                      currency: PLN
+                      value: 42.99
+                    rate:
+                      source: '243/C/NBP/2024'
+                      value: 4.1092
+        422:
+          description: |
+            May happen if:
+              - Transaction with given `X-Transaction-Ref` was already settled,
+              - Wallet for any currency from pair does not exist,
+              - There are insufficient funds in source wallet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        424:
+          description: |
+            May happen if:
+              - Exchange rate provider is unavailable,
+              - Specified currency pair is unknown to exchange rate provider.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+  parameters:
+    AcceptLanguage:
+      name: Accept-Language
+      description: Language preference for the response
+      in: header
+      schema:
+        type: string
+        example: pl-PL
+    RequestId:
+      name: X-Transaction-Ref
+      description: Unique transaction reference used as idempotency key
+      in: header
+      required: true
+      schema:
+        type: string
+        example: 20f0d846-128c-45a6-a6e1-f65721db2e38
+    WalletId:
+      name: walletId
+      description: Unique wallet identifier
+      in: path
+      required: true
+      schema:
+        type: string
+        example: 38352658567418872
+  schemas:
+    Error:
+      description: Error details.
+      properties:
+        code: 
+          description: Error code.
+          type: string
+          example: WalletNotFound
+        message:
+          description: Technical error description.
+        userMessage:
+          description: Localized, human-friendly error description.
+          type: string
+          example: Specified wallet does not exist or does not belong to you.
+    RegisterCustomerRequest:
+      description: Register customer request
+      properties:
+        firstName:
+          type: string
+          example: Jan
+        lastName:
+          type: string
+          example: Kowalski
+        password:
+          type: string
+          example: secret
+    OpenWalletRequest:
+      description: New wallet details
+      properties:
+        currency:
+          $ref: '#/components/schemas/CurrencyCode'
+        initialBalance:
+          $ref: '#/components/schemas/Amount'
+      required:
+        - currency
+        - initialBalance
+    CurrencyExchangeRequest:
+      description: ...
+      properties:
+        operation:
+          $ref: '#/components/schemas/CurrencyExchangeOperation'
+        source:
+          $ref: '#/components/schemas/CurrencyCode'
+        target:
+          $ref: '#/components/schemas/CurrencyCode'
+        amount:
+          $ref: '#/components/schemas/Amount'
+      example:
+        operation: SELL
+        source:
+          currency: USD
+          value: 5.99
+        target:
+          currency: PLN
+    CurrencyExchange:
+      description: ...
+      properties:
+        operation:
+          $ref: '#/components/schemas/CurrencyExchangeOperation'
+        source:
+          $ref: '#/components/schemas/MonetaryAmount'
+        target:
+          $ref: '#/components/schemas/MonetaryAmount'
+        rate:
+          $ref: '#/components/schemas/ExchangeRate'
+    CustomerNo:
+      type: string
+      example: 38352658567410117
+    Customer:
+      properties:
+        customerNo:
+          $ref: '#/components/schemas/CustomerNo'
+        firstName:
+          type: string
+          example: Jan
+        lastName:
+          type: string
+          example: Kowalski
+    WalletId:
+      description: Unique wallet identifier
+      type: string
+      example: 38352658567418872
+    Wallet:
+      description: |
+        Wallet details. The balance update may be slightly delayed 
+        relative to the transaction settlement.
+      properties:
+        walletId:
+          $ref: '#/components/schemas/WalletId'
+        currency:
+          $ref: '#/components/schemas/CurrencyCode'
+        balance:
+          $ref: '#/components/schemas/Amount'
+    Transaction:
+      description: Transaction details
+      properties:
+        id:
+          type: string
+          example: 38352658567418872
+        ref:
+          type: string
+          example: 48ca870b-b2cf-452d-8222-9cc23cb41d5e
+        walletId:
+          $ref: '#/components/schemas/WalletId'
+        timestamp:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum:
+            - TOP_UP
+            - CURRENCY_EXCHANGE
+          example: TOP_UP
+        amount:
+          $ref: '#/components/schemas/MonetaryAmount'
+        exchangeRate:
+          $ref: '#/components/schemas/ExchangeRate'
+    CurrencyCode:
+      description: ISO 4217 currency code
+      type: string
+      pattern: $\\d{3}$
+      example: "PLN"
+    Amount:
+      description: Amount
+      type: number
+      example: 42.01
+    MonetaryAmount:
+      properties:
+        currency:
+          $ref: '#/components/schemas/CurrencyCode'
+        value:
+          $ref: '#/components/schemas/Amount'
+    CurrencyExchangeOperation:
+      type: string
+      enum:
+        - SELL
+        - BUY
+    TransactionId:
+      description: Unique transaction identifier
+      type: string
+      example: 38352658573940760
+    ExchangeRate:
+      description: ...
+      properties:
+        source:
+          type: string
+          example: '243/C/NBP/2024'
+        value:
+          type: number
+          example: 4.1092

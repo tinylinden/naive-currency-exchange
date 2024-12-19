@@ -1,0 +1,17 @@
+nce:
+  adapters:
+    nbp:
+      url: http://localhost:8081/nbp-mock
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+  datasource:
+    url: jdbc:postgresql://localhost:5432/nce
+    username: kermit
+    password: thefrog
+logging:
+  level:
+    root: warn
+    eu.tinylinden.nce: trace
